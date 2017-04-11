@@ -20,7 +20,7 @@
 ---
 ### Writeup / README
 
-#### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
+#### 1.  [Here]( https://github.com/railsnoob/Vehicle-Detection/blob/master/writeup.md ) is my writeup for this project. 
 
 You're reading it!
 
