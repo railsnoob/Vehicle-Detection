@@ -5,17 +5,10 @@ import matplotlib.pyplot as plt
 import pickle
 from scipy.ndimage.measurements import label
 
-from hog_features import get_hog_features
+from hog_features import get_hog_features, convert_color
 
-from persist import load_parameters,  load_svc_scaler
-
-def convert_color(img, conv='RGB2YCrCb'):
-    if conv == 'RGB2YCrCb':
-        return cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
-    if conv == 'BGR2YCrCb':
-        return cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
-    if conv == 'RGB2LUV':
-        return cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
+from persist import load_parameters,  load_svc_scaler, load_bboxes, save_bboxes
+import os
 
 
 
@@ -94,7 +87,6 @@ def find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, ce
     nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
     nysteps = (nyblocks - nblocks_per_window) // cells_per_step
 
-    print("nblocks_per_window:",nblocks_per_window)
         
     # Compute individual channel HOG features for the entire image
     hog1 = get_hog_features(ch1, orient, pix_per_cell, cell_per_block, vis=False, feature_vec=False)
@@ -110,45 +102,50 @@ def find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, ce
             ypos = yb*cells_per_step
             xpos = xb*cells_per_step
             # Extract HOG for this patch
-            print("ypos",ypos,"xpos",xpos)
-            print("hog_feat",nblocks_per_window, nblocks_per_window)
+            # print("ypos",ypos,"xpos",xpos)
+            # print("hog_feat",nblocks_per_window, nblocks_per_window)
             hog_feat1 = hog1[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel() 
             hog_feat2 = hog2[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel() 
             hog_feat3 = hog3[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel() 
             hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
 
-            print("hog_feat1=",hog_feat1.shape,"hog_feat2=",hog_feat2.shape," hog_feat3=",hog_feat3.shape)
+            # print("hog_feat1=",hog_feat1.shape,"hog_feat2=",hog_feat2.shape," hog_feat3=",hog_feat3.shape)
             
             xleft = xpos*pix_per_cell
             ytop = ypos*pix_per_cell
 
             # Extract the image patch1
             subimg = cv2.resize(ctrans_tosearch[ytop:ytop+window, xleft:xleft+window], (64,64))
-            print("subimg shape=",subimg.shape)
+            # print("subimg shape=",subimg.shape)
             # Get color features
             spatial_features = bin_spatial( subimg, size=spatial_size )
             hist_features = color_hist( subimg, nbins=hist_bins )
-            print("find_cars spatial={} hist={} hog={}\n".format(spatial_features.shape,hist_features.shape,hog_features.shape))
+            # print("find_cars spatial={} hist={} hog={}\n".format(spatial_features.shape,hist_features.shape,hog_features.shape))
             # Scale features and make a prediction
             x = np.concatenate((spatial_features.ravel(), hist_features.ravel(), hog_features.ravel()))
-            print("find_cars x=",x.shape)
+            # print("find_cars x=",x.shape)
             
             test_features = X_scaler.transform(x).reshape(1, -1)
             #test_features = X_scaler.transform(np.hstack((shape_feat, hist_feat)).reshape(1, -1))    
             test_prediction = svc.predict(test_features)
+            #print("TEst prediction ",test_prediction,xb,yb)
             
-            if test_prediction == 1:
+            if (test_prediction == 1) :
                 xbox_left = np.int(xleft*scale)
                 ytop_draw = np.int(ytop*scale)
                 win_draw = np.int(window*scale)
                 cv2.rectangle(draw_img,(xbox_left, ytop_draw+ystart),(xbox_left+win_draw,ytop_draw+win_draw+ystart),(0,0,255),6)
                 v = np.array([[ int(xbox_left), int(ytop_draw+ystart)],[int(xbox_left+win_draw),int(ytop_draw+win_draw+ystart)]]).reshape((1,2,2))
-                print("V shape",v.shape)
-                print("box",bbox.shape)
+                # print("PREDICTION! V shape",v.shape, "box=",bbox.shape)
                 bbox = np.vstack((bbox,v))
 
+    
+    #plt.imshow(draw_img)
+    #plt.show()
+    #plt.pause(.001)
+    
     bbox = np.delete(bbox,(0),0) # Remove the first element that I put on 
-    print("bbox shape:",bbox.shape," values=",bbox)
+    print("find_cars returning bbox shape:",bbox.shape," values=",bbox)
     return draw_img,bbox
 
 
@@ -166,7 +163,7 @@ def find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, ce
 def add_heat(heatmap, bbox_list):
     # Iterate through list of bboxes
     print(bbox_list);
-    print("aaaa");
+    print("add_heat() bbox_list: ",bbox_list.shape);
     for box in bbox_list:
         print("add_heat BOX", box)
         print(box[0][1],box[1][1])
@@ -210,36 +207,94 @@ def plot(orig, heatmap):
     plt.title('Heat Map')
     fig.tight_layout()
 
+total_heatmap = None
     
-def process_image(orig_img):
-
-    print("Orig Image Shape: ",orig_img.shape)
-    # Load svc and X_scaler from processed data
+def process_image(orig_img,key=None,save_heatmap=False,save_labels=False):
+    global total_heatmap
+    
+    if key!=None:
+        key = os.path.basename(key)
+    
+        # Load svc and X_scaler from processed data
     
     svc, X_scaler = load_svc_scaler()
 
-    scale =1
     # Load parameters
     orient, pix_per_cell, cell_per_block, spatial_size, hist_bins = load_parameters()
 
-    ystart=456
+    ystart=380
     ystop =683
+
+    img=orig_img
+
+    clean = np.copy(img)
     
-    img, bboxes = find_cars(orig_img,ystart,ystop,scale,svc, X_scaler,  orient, pix_per_cell, cell_per_block, spatial_size, hist_bins)
+    bboxes_all = None
+    # if key is given try to load it first from cache
+    if key!=None:
+        bboxes_all = load_bboxes(key)
+
+    #plt.ion()
+    
+    if bboxes_all == None:
+        bboxes_all = np.empty((1,2,2))
+        # for a in np.arange(0.6,2.5,0.3):
+        # 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4 
+        for a in [0.6,0.7,1.1,1.5,1.8,2.3]:
+            scale = a
+            print("scale:",scale)
+            img, bboxes = find_cars(orig_img,ystart,ystop,scale,svc, X_scaler,  orient, pix_per_cell, cell_per_block, spatial_size, hist_bins)
+            bboxes_all = np.vstack((bboxes_all, bboxes))
+        
+    print("BBOXES ALL", bboxes_all.shape)
+    bboxes_all = np.delete(bboxes_all,(0),0)
+
+    
+    if key!=None:
+        save_bboxes(bboxes_all,key)
+
+    clean2 = np.copy(clean)
+    if save_heatmap and save_labels:
+        for b in bboxes_all:
+            print(b[0])
+            cv2.rectangle(clean2, (int(b[0][0]),int(b[0][1])), (int(b[1][0]),int(b[1][1])), (0,0,255), 6)
+            
 
     heat = np.zeros_like(img[:,:,0]).astype(np.float)
     # Add heat to each box in box list
-    heat = add_heat(heat,bboxes)
+    heat = add_heat(heat,bboxes_all)
     
     # Apply threshold to help remove false positives
-    heat = apply_threshold(heat,1)
-
+    heat = apply_threshold(heat,2)
+  
     # Visualize the heatmap when displaying    
     heatmap = np.clip(heat, 0, 255)
 
+    # plt.imshow(heat)
+    # plt.show()
+    # plt.pause(.001)
+
+    if total_heatmap == None:
+        total_heatmap = heatmap
+    else:
+        total_heatmap += heatmap
+        
     # Find final boxes from heatmap using label function
     labels = label(heatmap)
-
-    draw_img = draw_labeled_bboxes(np.copy(img), labels)
     
+    print("labels",labels)
+
+    draw_img = draw_labeled_bboxes(clean, labels)
+
+    print("draw_img shape",draw_img.shape)
+    
+    # plt.ioff()
+    # plt.imshow(draw_img)
+    # plt.show()
+    if save_heatmap and save_labels:
+        # Only for the 6 frame case.
+        print("total_heatmap {}".format(total_heatmap.shape))
+        total_labels = label(total_heatmap)
+        total_image = draw_labeled_bboxes(clean,total_labels)
+        return draw_img, heatmap,labels, total_labels, total_image, clean2
     return draw_img

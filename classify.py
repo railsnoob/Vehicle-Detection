@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 import glob
-from hog_features import get_hog_features
+from hog_features import get_hog_features, convert_color
 from processing import  extract_features
 import time
 
@@ -64,10 +64,6 @@ def test_code():
     
 def read_data(limit=5):
 
-    # X=np.empty((1,64,64,3)) This is for reading images.
-    
-
-      
     params = { "orient" : 9 ,
                 "pix_per_cell" : 8,
                 "cell_per_block" : 2,
@@ -92,8 +88,8 @@ def read_data(limit=5):
     spatial_size = params["spatial_size"]
     hist_bins = params["hist_bins"]
 
-    vehicles = glob.glob("vehicles/*/*.*")
-    non_vehicles = glob.glob("non-vehicles/*/*.*")
+    vehicles = glob.glob("d/vehicles/*/*.*")
+    non_vehicles = glob.glob("d/non-vehicles/*/*.*")
 
     if limit:
         vehicles = vehicles[:limit]
@@ -101,6 +97,7 @@ def read_data(limit=5):
 
     for f in vehicles:
         xv = mpimg.imread(f)
+        xv = convert_color(xv, conv='RGB2YCrCb')
         xv = extract_features(xv,orient,pix_per_cell,cell_per_block,spatial_size,hist_bins)
         yv = 1
         X = np.vstack((X,[xv]))
@@ -114,6 +111,7 @@ def read_data(limit=5):
     
     for f in non_vehicles:
         xnv = mpimg.imread(f)
+        xnv = convert_color(xnv, conv='RGB2YCrCb')
         xnv = extract_features(xnv,orient,pix_per_cell,cell_per_block,spatial_size,hist_bins)
         ynv = 0
         X = np.vstack((X,[xnv]))
@@ -128,16 +126,6 @@ def read_data(limit=5):
     Y = np.delete(Y,(0),0)
     print("After NON vehicles ",X.shape,Y.shape)
 
-    # plt.figure(figsize=(10,10))
-    
-    # for i in range(X.shape[0]):
-    #     plt.subplot(X.shape[0],1,i+1)
-    #     plt.imshow(X[i])
-
-    # plt.show()
-    
-    
-    # pickle_data(X,Y,"train")
 
     return X, Y
 

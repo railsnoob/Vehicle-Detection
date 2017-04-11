@@ -10,6 +10,17 @@ def save_svc_scaler(svc, X_scaler):
     dist_pickle = {"svc":svc,"X_scaler":X_scaler}
     pickle.dump(dist_pickle, open("svc_pickle.p","wb"))
 
+def save_bboxes(bboxes,key):
+    dist_pickle = {'bboxes':bboxes}
+    pickle.dump(dist_pickle, open("cache/bboxes.{}.p".format(key),"wb"))
+
+def load_bboxes(key):
+    try:
+        with open("cache/bboxes.{}.p".format(key),"rb") as f:
+            dist_pickle = pickle.load(f)
+    except:
+        return None
+    return dist_pickle["bboxes"]
     
 def load_parameters():
     dist_pickle = pickle.load( open("params_pickle.p", "rb" ) )
