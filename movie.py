@@ -29,14 +29,15 @@ def p(img):
     return result
 
 def process_video():
-    video_ouptut = 'detection_video2.mp4'
-    clip1 = VideoFileClip("test_video.mp4")
-    #video_ouptut = 'project_detection_video.mp4'
-    #clip1 = VideoFileClip("project_video.mp4")
-
+    # video_ouptut = 'detection_video3.mp4'
+    # clip1 = VideoFileClip("test_video.mp4")
+    video_ouptut = 'project_detection_video3.mp4'
+    clip1 = VideoFileClip("project_video.mp4")
+    
     processed_clip = clip1.fl_image(p)
     processed_clip.write_videofile(video_ouptut, audio = False)
 
+    
 def process_frames():
     clip1 = VideoFileClip("test_video.mp4")
     #video_ouptut = 'project_detection_video.mp4'
@@ -46,19 +47,16 @@ def process_frames():
     for f in clip1.iter_frames():
         if counter == 6:
             break;
-
         mpimg.imsave("frames/frame{}.jpg".format(counter),f)
-        processed_clip, heatmap,labels, total_labels, total_image,clean2 = process_image(f,save_heatmap=True,save_labels=True)
+        processed_clip, heatmap,labels  = process_image(f,heatmap_and_labels=True)
         mpimg.imsave("frames/processed{}.jpg".format(counter),processed_clip)
         mpimg.imsave( "frames/heatmap{}.jpg".format(counter),heatmap)
-        print("labels-",labels)
         mpimg.imsave( "frames/labels{}.jpg".format(counter),labels[0])
         # mpimg.imsave( "frames/total_labels{}.jpg".format(counter),total_labels)
-        mpimg.imsave( "frames/total_image{}.jpg".format(counter),total_image)
-        mpimg.imsave( "frames/clean2-{}.jpg".format(counter),clean2)
+        # mpimg.imsave( "frames/clean2-{}.jpg".format(counter),clean2)
         counter += 1
 
 # process_images()
-# process_video()
-process_frames()
+process_video()
+# process_frames()
     

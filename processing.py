@@ -10,6 +10,7 @@ from hog_features import get_hog_features, convert_color
 from persist import load_parameters,  load_svc_scaler, load_bboxes, save_bboxes
 import os
 
+from collections import deque
 
 
 def bin_spatial(img, size=(32, 32)):
@@ -207,9 +208,29 @@ def plot(orig, heatmap):
     plt.title('Heat Map')
     fig.tight_layout()
 
+
+
+last_6_frames = deque([])
 total_heatmap = None
+
+def save_6_heatmaps(frame):
+    global last_6_frames
+    global total_heatmap
     
-def process_image(orig_img,key=None,save_heatmap=False,save_labels=False):
+    last_6_frames.append(frame)
+
+    if len(last_6_frames) > 6:
+        to_del = last_6_frames.popleft()
+        total_heatmap -= to_del
+        
+    if total_heatmap == None:
+        total_heatmap = frame
+    else:
+        total_heatmap += frame
+
+
+    
+def process_image(orig_img,key=None,heatmap_and_labels=False):
     global total_heatmap
     
     if key!=None:
@@ -234,8 +255,6 @@ def process_image(orig_img,key=None,save_heatmap=False,save_labels=False):
     if key!=None:
         bboxes_all = load_bboxes(key)
 
-    #plt.ion()
-    
     if bboxes_all == None:
         bboxes_all = np.empty((1,2,2))
         # for a in np.arange(0.6,2.5,0.3):
@@ -248,13 +267,12 @@ def process_image(orig_img,key=None,save_heatmap=False,save_labels=False):
         
     print("BBOXES ALL", bboxes_all.shape)
     bboxes_all = np.delete(bboxes_all,(0),0)
-
     
     if key!=None:
         save_bboxes(bboxes_all,key)
 
     clean2 = np.copy(clean)
-    if save_heatmap and save_labels:
+    if heatmap_and_labels:
         for b in bboxes_all:
             print(b[0])
             cv2.rectangle(clean2, (int(b[0][0]),int(b[0][1])), (int(b[1][0]),int(b[1][1])), (0,0,255), 6)
@@ -269,18 +287,14 @@ def process_image(orig_img,key=None,save_heatmap=False,save_labels=False):
   
     # Visualize the heatmap when displaying    
     heatmap = np.clip(heat, 0, 255)
-
+    
     # plt.imshow(heat)
     # plt.show()
     # plt.pause(.001)
-
-    if total_heatmap == None:
-        total_heatmap = heatmap
-    else:
-        total_heatmap += heatmap
-        
+    save_6_heatmaps(heatmap)
+    
     # Find final boxes from heatmap using label function
-    labels = label(heatmap)
+    labels = label(total_heatmap)
     
     print("labels",labels)
 
@@ -291,10 +305,7 @@ def process_image(orig_img,key=None,save_heatmap=False,save_labels=False):
     # plt.ioff()
     # plt.imshow(draw_img)
     # plt.show()
-    if save_heatmap and save_labels:
-        # Only for the 6 frame case.
-        print("total_heatmap {}".format(total_heatmap.shape))
-        total_labels = label(total_heatmap)
-        total_image = draw_labeled_bboxes(clean,total_labels)
-        return draw_img, heatmap,labels, total_labels, total_image, clean2
+    if heatmap_and_labels:
+        return draw_img, total_heatmap, labels
+    
     return draw_img
