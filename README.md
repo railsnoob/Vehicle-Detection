@@ -3,7 +3,7 @@
 
 The goal of this project was to create a vehicle detection pipeline. This project is part of the Udacity Self Driving Car Nanodegree (https://www.udacity.com/drive) .
 
-![alt text][image8]
+![alt text][image9]
 
 The steps that were taken:
 
@@ -23,7 +23,7 @@ The steps that were taken:
 [image5]: ./examples/bboxes_and_heat.png
 [image6]: ./examples/labels_map.png
 [image7]: ./examples/output_bboxes.png
-[image8]: ./vehicle-detection-snap.png
+[image9]: ./vehicle-detection-snap.png
 [video1]: ./project_detection_video.mp4
 
 
