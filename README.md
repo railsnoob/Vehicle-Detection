@@ -1,5 +1,5 @@
 
-# Vehicle Detection Project
+# Vehicle Detection Using Support Vector Machines
 
 The goal of this project was to create a vehicle detection pipeline. This project is part of the Udacity Self Driving Car Nanodegree (https://www.udacity.com/drive) .
 
